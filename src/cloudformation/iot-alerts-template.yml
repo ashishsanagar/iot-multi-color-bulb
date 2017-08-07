@@ -1,0 +1,124 @@
+Parameters:
+  projectName:
+    Type: String
+    Default: fngn-iot-alerts
+    MinLength: 3
+    MaxLength: 15
+    Description: fngn iot related alerts
+  projectNameSpace:
+    Type: String
+    Default: fngn-iot-alerts
+    Description: TechOffice
+  accountType:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: AWS account type (dev | test | prod)
+  lambdaCode:
+    Type: String
+    Default: ''
+    Description: S3 bucket object containing the lambda code
+
+Resources:
+  iotAlertsLambdaAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: "/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Sid: "AllowLambdaServiceToAssumeRole"
+            Effect: "Allow"
+            Action: 
+              - "sts:AssumeRole"
+            Principal:
+              Service: 
+                - "lambda.amazonaws.com"
+                - "sns.amazonaws.com"                  
+      
+  IOTAlerts:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: lambda/index.handler
+      Role: !GetAtt iotAlertsLambdaAccessRole.Arn
+      Description: !Join 
+        - ''
+        - - 'Cloud formation lambda generated for '
+          - !Ref projectName
+      FunctionName: !Join 
+        - '-'
+        - - !Ref projectName
+          - lambda
+      MemorySize: 1024
+      Timeout: 30
+      Code:
+        S3Bucket: !Join 
+          - ''
+          - - com.fngn.
+            - !Ref accountType
+        S3Key: !Join 
+          - ''
+          - - !Ref projectName
+            - /
+            - !Ref lambdaCode
+      Runtime: nodejs4.3
+         
+  IOTAlertConfigTable: 
+      Type: "AWS::DynamoDB::Table"
+      Properties: 
+        AttributeDefinitions: 
+          - 
+            AttributeName: "apiKey"
+            AttributeType: "S"
+          - 
+            AttributeName: "messageKey"
+            AttributeType: "S"         
+        KeySchema: 
+          - 
+            AttributeName: "apiKey"
+            KeyType: "HASH"
+          - 
+            AttributeName: "messageKey"
+            KeyType: "RANGE"    
+        ProvisionedThroughput: 
+          ReadCapacityUnits: "5"
+          WriteCapacityUnits: "5"
+        TableName: "iot-alert-config"
+        LocalSecondaryIndexes: 
+        - 
+          IndexName: "bulbLSI"
+          KeySchema: 
+            - 
+              AttributeName: "apiKey"
+              KeyType: "HASH"
+            - 
+              AttributeName: "messageKey"
+              KeyType: "RANGE"              
+          Projection: 
+              NonKeyAttributes: 
+                - "token"
+              ProjectionType: "INCLUDE"
+  
+  BuildOrDeployStatusTopic: 
+    Type: "AWS::SNS::Topic"
+    Properties: 
+      Subscription: 
+        - 
+          Endpoint: !GetAtt IOTAlerts.Arn
+          Protocol: lambda
+      TopicName: "BuildOrDeployStatus"   
+  
+  lambdaFunctionPermission:
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref IOTAlerts
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref BuildOrDeployStatusTopic
+    Type: 'AWS::Lambda::Permission'             
