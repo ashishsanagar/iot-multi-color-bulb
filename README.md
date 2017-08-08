@@ -1,9 +1,9 @@
-# lyfx multi color bulb and AWS Integration 
+# lifx multi color bulb and AWS Integration 
 
 	Create AWS resources using YAML templates and integrate to lynx IOT multi-color bulb
 
 
-## Integrate LYFX multi color IoT bulb to wifi network
+## Integrate LIFX multi color IoT bulb to wifi network
 	Download lyfx mobile app
 	Plug and switch on bulb, then connect to lyfx wifi on your mobile device
 	go to lyfx app and connect to your network wifi
@@ -21,7 +21,7 @@
 
 	Schema columns - apiKey, messageKey, token, brightness, color, proceed
 	
-	Add item with previously copied OAuth token for LYFX bulb and other config information
+	Add item with previously copied OAuth token for LIFX bulb and other config information
 
 	Refer to cloudformation template for indexes and other information
 
